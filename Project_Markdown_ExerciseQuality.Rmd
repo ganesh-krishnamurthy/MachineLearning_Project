@@ -1,0 +1,98 @@
+---
+title: "A Model for Exercise Quality/Posture Determination"
+author: "Ganesh Krishnamurthy"
+date: "July 23, 2015"
+output: html_document
+---
+## Executive Summary:
+Using measurements/readings from gyrometers/sensors in the forearm, arm, waist, dumbell of the participant and using 10-fold cross validation approach, a __random forest__ model was developed to give accurate predictions on quality of exercise. Multiple data clean-up, pre-processing and model building approaches were carried out before selection of the final model and they are detailed below.
+
+### Data preparation:
+Near zero covariates were identified after temporarily eliminating the "new window" records. This reduced the number of predictors from 159 to a manageable 58. Further removal of record-ID type fields (participant name, date/timestampt etc) yielded 52 predictors.
+
+```{r, include=FALSE}
+library(caret); library(ggplot2)
+
+# Set the working directory
+setwd("C:/Training/R_Programming/Machine_Learning/Project")
+
+# Read-in the training dataset. Read in blanks as NA using the na.strings argument
+training<-read.csv("pml-training.csv", header=TRUE, na.strings=c("","NA"))
+```
+```{r, eval=TRUE, echo=TRUE}
+training_exWindow<-subset(training, new_window=="no") 
+nsv<-nearZeroVar(training_exWindow,saveMetrics = TRUE)
+training_clean<-training[,nsv$zeroVar==FALSE]
+# Also remove non-sensical predictors like participant name date/timestamp/etc
+training_clean<-training_clean[,-(1:6)]
+```
+### Implementing 10-Fold Cross Validation:
+This was done using the "trainControl" functionality in the Caret package
+```{r plot, eval=TRUE, echo=TRUE}
+train_control_10k_CV<-trainControl(method="cv", number=10)
+```
+### Base Exploratory Model Creation - Simple TREE:
+As a first blind stab at model creation, a decision tree was attempted with all predictors and 10-fold cross validation. This yielded high miss-classification and __just 47% accuracy__.
+```{r, eval=FALSE, echo=TRUE}
+modFit_tree_raw<-train(classe ~ ., method="rpart", data=training_clean, trControl=train_control_10k_CV)
+```
+__This stressed the need for better pre-processing of the data and an advanced machine learning algorithms.__
+
+### Principal Component Analysis/Creation:
+When 52 predictors (and 19,622 records) were fed to a random forest model as part of preliminary analysis, my computer's memory requirements were exceeded. Also, a correlation analysis revealed that multiple predictors were correlated and the dataset needed dimension reduction.
+```{r, eval=TRUE, echo=TRUE}
+## Identify correlated predictors
+Cor_Mat<-abs(cor(training_clean[,-53]))
+diag(Cor_Mat)<-0 # Remove the diagonal (all 1)
+summary(Cor_Mat[upper.tri(Cor_Mat)])
+corr_preds<-which(Cor_Mat > 0.8, arr.ind=TRUE)
+```
+Principal components were generated and the number of components required to capture __80% proportion of variance__ was identified as __12__. 
+```{r, eval=TRUE, echo=TRUE}
+pc_comp<-prcomp(training_clean[,-53], scale.=TRUE)
+```
+A plot of the first 2 principal components (accounting for 32% of variation) cleanly shows 5 classes in the data and gives us confidence that we are on the right path with this approach and that adding 10 more principal components will fine tune classification further.
+```{r, eval=TRUE, echo=FALSE}
+plot(pc_comp$x[,1],pc_comp$x[,2], col=training_clean$classe)
+```
+```{r, eval=TRUE, echo=TRUE}
+pcaObj<-preProcess(training_clean[,-53], method="pca", thresh=0.8)
+training_PC<-predict(pcaObj, training_clean[,-53])
+training_PC<-data.frame(training_PC, classe=training_clean$classe)
+```
+### Other Models/Machine Learning Algorithms Attempted:
+Both a boosted tree model and a linear discriminant analysis were attempted using 10-fold cross validation on 12 principal component predictors.
+```{r, eval=FALSE}
+## Boosting
+modFit_boost<-train(classe ~ ., data=training_PC, method="gbm", verbose=FALSE,
+                    trControl=train_control_10k_CV)
+# Classification accuracy of boosting
+confusionMatrix(training_PC$classe, predict(modFit_boost, training_PC[,-13]))
+# Result: 78.49% estimated out of sample accuracy
+
+## Linear Discriminant Analysis
+modFit_lda<-train(classe ~., data=training_PC, method="lda", trControl=train_control_10k_CV)
+# Classification accuracy of LDA
+confusionMatrix(training_PC$classe, predict(modFit_lda, training_PC[,-13]))
+# Result: 47% estimated out of sample accuracy
+```
+The boosted tree model had an accuracy of 78%, while the linear discriminant analysis has only 47% accuracy. So, search for a better model continued.
+
+### Winning/final Model: Random Forest on Principal Components:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+modFit_randForest_10cv<-train(classe ~ ., method="rf", data=training_PC, trControl=train_control_10k_CV)
+## Print the model summary
+modFit_randForest_10cv
+```
+## Estimating Out of Sample Error of Random Forest (winning) Model
+The property/structure of random forests is such it uses bootstrap samples internally and one-third of the records/cases are held out from construction of the k-th tree. This allows us to calculate Out of Bag (OOB) errors and the OOB error is typically an unbiased estimate of the error expected on an out of sample record (i.e., a "test" record).
+For the random forest model, __the out of sample error is estimated to be 2.7% using the 'Out of Bag' approach/metric__
+```{r, eval=TRUE, echo=TRUE}
+modFit_randForest_10cv$finalModel
+```
+As an added estimate, the cross validation accuracy of the model is calculated to provide an unbiased estimate of out of sample error:
+```{r, eval=TRUE, echo=TRUE}
+confusionMatrix(training_PC$classe, predict(modFit_randForest_10cv, training_PC[,-13]))
+```
+__Using cross validation, the out of sample error is estimated at 0%, i.e., 100% expected accuracy.__
+
