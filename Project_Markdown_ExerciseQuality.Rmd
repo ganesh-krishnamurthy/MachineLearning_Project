@@ -5,7 +5,9 @@ date: "July 23, 2015"
 output: html_document
 ---
 ## Executive Summary:
-Using measurements/readings from gyrometers/sensors in the forearm, arm, waist, dumbell of the participant and using 10-fold cross validation approach, a __random forest__ model was developed to give accurate predictions on quality of exercise. Multiple data clean-up, pre-processing and model building approaches were carried out before selection of the final model and they are detailed below.
+Using measurements/readings from gyrometers/sensors in the forearm, arm, waist, dumbell of the participant and using 10-fold cross validation approach, a __random forest__ model was developed to give accurate predictions on quality of exercise. Using 10-fold cross validation, this model is estimated to have 100% accuracy on out of sample data. __Note__: This model was able to correctly predict 19 out of the 20 cases in the "test" datset for the "submission" piece of this project.
+
+This write-up provides details on the modeling approach.
 
 ### Data preparation:
 Near zero covariates were identified after temporarily eliminating the "new window" records. This reduced the number of predictors from 159 to a manageable 58. Further removal of record-ID type fields (participant name, date/timestampt etc) yielded 52 predictors.

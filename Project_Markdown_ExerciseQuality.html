@@ -70,7 +70,8 @@ img {
 
 <div id="executive-summary" class="section level2">
 <h2>Executive Summary:</h2>
-<p>Using measurements/readings from gyrometers/sensors in the forearm, arm, waist, dumbell of the participant and using 10-fold cross validation approach, a <strong>random forest</strong> model was developed to give accurate predictions on quality of exercise. Multiple data clean-up, pre-processing and model building approaches were carried out before selection of the final model and they are detailed below.</p>
+<p>Using measurements/readings from gyrometers/sensors in the forearm, arm, waist, dumbell of the participant and using 10-fold cross validation approach, a <strong>random forest</strong> model was developed to give accurate predictions on quality of exercise. Using 10-fold cross validation, this model is estimated to have 100% accuracy on out of sample data. <strong>Note</strong>: This model was able to correctly predict 19 out of the 20 cases in the “test” datset for the “submission” piece of this project.</p>
+<p>This write-up provides details on the modeling approach.</p>
 <div id="data-preparation" class="section level3">
 <h3>Data preparation:</h3>
 <p>Near zero covariates were identified after temporarily eliminating the “new window” records. This reduced the number of predictors from 159 to a manageable 58. Further removal of record-ID type fields (participant name, date/timestampt etc) yielded 52 predictors.</p>
@@ -139,14 +140,14 @@ modFit_randForest_10cv</code></pre>
 ## No pre-processing
 ## Resampling: Cross-Validated (10 fold) 
 ## 
-## Summary of sample sizes: 17661, 17659, 17660, 17659, 17661, 17661, ... 
+## Summary of sample sizes: 17659, 17660, 17658, 17660, 17661, 17661, ... 
 ## 
 ## Resampling results across tuning parameters:
 ## 
-##   mtry  Accuracy   Kappa     Accuracy SD  Kappa SD   
-##    2    0.9696261  0.961572  0.004450477  0.005642732
-##    7    0.9649878  0.955710  0.004655877  0.005899940
-##   12    0.9595865  0.948885  0.004294072  0.005438508
+##   mtry  Accuracy   Kappa      Accuracy SD  Kappa SD   
+##    2    0.9698819  0.9618982  0.004896342  0.006196119
+##    7    0.9637660  0.9541691  0.004306697  0.005448424
+##   12    0.9592298  0.9484331  0.004433272  0.005606171
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 2.</code></pre>
@@ -154,7 +155,7 @@ modFit_randForest_10cv</code></pre>
 </div>
 <div id="estimating-out-of-sample-error-of-random-forest-winning-model" class="section level2">
 <h2>Estimating Out of Sample Error of Random Forest (winning) Model</h2>
-<p>The property/structure of random forests is such it uses bootstrap samples internally and one-third of the records/cases are held out from construction of the k-th tree. This allows us to calculate Out of Bag (OOB) errors and the OOB error is typically an unbiased estimate of the error expected on an out of sample record (i.e., a “test” record). For the random forest model, <strong>the out of sample error is estimated to be 2.62% using the ‘Out of Bag’ approach/metric</strong></p>
+<p>The property/structure of random forests is such it uses bootstrap samples internally and one-third of the records/cases are held out from construction of the k-th tree. This allows us to calculate Out of Bag (OOB) errors and the OOB error is typically an unbiased estimate of the error expected on an out of sample record (i.e., a “test” record). For the random forest model, <strong>the out of sample error is estimated to be 2.61% using the ‘Out of Bag’ approach/metric</strong></p>
 <pre class="r"><code>modFit_randForest_10cv$finalModel</code></pre>
 <pre><code>## 
 ## Call:
@@ -163,14 +164,14 @@ modFit_randForest_10cv</code></pre>
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 2
 ## 
-##         OOB estimate of  error rate: 2.62%
+##         OOB estimate of  error rate: 2.61%
 ## Confusion matrix:
 ##      A    B    C    D    E class.error
-## A 5496   16   45   18    5  0.01505376
-## B   66 3662   51   10    8  0.03555439
-## C   18   37 3331   29    7  0.02659264
-## D   17    8  113 3072    6  0.04477612
-## E    2   16   22   21 3546  0.01691156</code></pre>
+## A 5499   22   38   16    5  0.01451613
+## B   71 3656   56   10    4  0.03713458
+## C   14   39 3336   27    6  0.02513150
+## D   20    8  110 3072    6  0.04477612
+## E    2   18   20   21 3546  0.01691156</code></pre>
 <p>As an added estimate, the cross validation accuracy of the model is calculated to provide an unbiased estimate of out of sample error:</p>
 <pre class="r"><code>confusionMatrix(training_PC$classe, predict(modFit_randForest_10cv, training_PC[,-13]))</code></pre>
 <pre><code>## Confusion Matrix and Statistics
